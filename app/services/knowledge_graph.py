@@ -12,7 +12,32 @@
 
 from __future__ import annotations
 
+import os
 import time
 from typing import Any
 
 from app.agents.knowledge_extract_agent import Entity, Relation
+
+class KnowledgeGraphService:
+    """neo4j 知识图谱服务"""
+
+    def __init__(self):
+        self._driver:Any=None
+
+    async def init(self):
+        from neo4j import AsyncGraphDatabase
+        self._driver=AsyncGraphDatabase.driver(
+            os.getenv("neo4j_uri"),
+            auth=(os.getenv("neo4j_user"),os.getenv("neo4j_password")),
+        )
+        await self._ensure_indexes()
+
+    async def close(self)->None:
+        if self._driver:
+            await self._driver.close()
+
+    async def _ensure_indexes(self)->None:
+        """创建常用索引以加速查询"""
+        index_queries=[
+            ""
+        ]
