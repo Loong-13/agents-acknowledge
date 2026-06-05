@@ -33,6 +33,7 @@ class DocumentChunk:
     """一个文档块，携带内容+元数据"""
     content: str
     doc_id: str
+    doc_type: DocType
     chunk_index: int
     metadata: dict[str, Any] = field(default_factory=dict)
     embedding: list[ float] | None = None
