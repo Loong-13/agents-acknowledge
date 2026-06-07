@@ -125,7 +125,7 @@ class KnowledgeExtractAgent:
             HumanMessage(content=f"请从以下文本中抽取知识：\n\n{text}"),
 
         ]
-        resp=await self.llm.invoke( messages)
+        resp=await self.llm.ainvoke( messages)
         return self._parse_response(resp.content,source_id)
 
     def _parse_response(self,raw: str, source_id: str)-> ExtractionResult:

@@ -16,10 +16,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from langchain_classic.chains.question_answering.map_reduce_prompt import messages
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from markdown_it.common.entities import entities
 
 
 class QueryIntent(str,Enum):
@@ -105,19 +103,19 @@ class QAAgent:
         self.vector_store=vector_store
         self.knowledge_graph=knowledge_graph
 
-    async def answer(self,question:str)->QueryResult:
+    async def answer(self,question:str)->QAResult:
         intent=await self._classify_intent(question)
         rewritten=await self._rewrite_query(question)
 
         vector_contexts=await self._retrieve_vector(rewritten)
-        graph_contexts=await self._retrieve_graph(rewritten)
+        graph_contexts=await self._retrieve_graph(rewritten,rewritten)
 
-        all_contexts=await self._hybrid_rerank(vector_contexts+graph_contexts)
+        all_contexts= self._hybrid_rerank(vector_contexts+graph_contexts)
         top_contexts=all_contexts[:8]
 
         answer_text,reasoning=await self._generate_answer(question,top_contexts,intent)
 
-        return QueryResult(
+        return QAResult(
             question=question,
             answer=answer_text,
             contexts=top_contexts,
@@ -188,12 +186,12 @@ class QAAgent:
             cleaned=resp.content.strip()
             if cleaned.startswith("'''"):
                 cleaned=cleaned.split("\n",1)[1].rsplit("'''",1)[0]
-                cyphers=json.loads(cleaned)
+                cyphers_data=json.loads(cleaned)
         except (json.JSONDecodeError,IndexError):
-            cyphers={"queries":[]}
+            cyphers_data={"queries":[]}
 
         contexts:list[RetrievedContext]=[]
-        for query in cyphers.get("queries",[]):
+        for query in cyphers_data.get("queries",[]):
             try:
                 records=await self.knowledge_graph.execute_cypher(query)
                 for record in records:
@@ -236,7 +234,7 @@ class QAAgent:
 
     async def _generate_answer(self,question:str,contexts:list[RetrievedContext],intent:QueryIntent)->tuple[str,list[str]]:
         """生成答案"""
-        context_text="\n\n".json(
+        context_text="\n\n".join(
             f"[来源 {i + 1}: {c.source} | 类型: {c.retrieval_type} | 分数: {c.score:.2f}]\n{c.content}"
             for i, c in enumerate(contexts)
         )

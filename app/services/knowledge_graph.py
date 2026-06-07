@@ -41,7 +41,7 @@ class KnowledgeGraphService:
         """创建常用索引以加速查询"""
         index_queries=[
             "CREATE INDEX IF NOT EXISTS FOR (n:Entity) ON (n.name)",
-            "CREATE INDEX IF NOT EXISTS FOR (n.Entity) ON (n.type)",
+            "CREATE INDEX IF NOT EXISTS FOR (n:Entity) ON (n.type)",
             "CREATE INDEX IF NOT EXISTS FOR (n:Entity) ON (n.source)",
         ]
 

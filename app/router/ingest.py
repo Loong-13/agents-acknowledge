@@ -18,7 +18,7 @@ async def upload_document(file:UploadFile=File(...)):
     if not ingest_wf:
         raise HTTPException(status_code=500,detail="文档入库工作流不存在")
 
-    result=await ingest_wf.ainvoke({"file_path":save_path})
+    result=await ingest_wf.ainvoke({"file_paths":[save_path]})
     chunks=result.get("chunks",[])
     extractions=result.get("extractions",[])
     total_entities=sum([len(ext.entities) for ext in extractions])
@@ -32,7 +32,7 @@ async def upload_document(file:UploadFile=File(...)):
         status="success" ,
     )
 
-@router.post("/batch",response_model=IngestResponse)
+@router.post("/batch",response_model=list[IngestResponse])
 async def upload_batch(files: list[UploadFile] = File(...)):
     """批量上传并解析文档，自动入库到向量库和知识图谱"""
     results=[]

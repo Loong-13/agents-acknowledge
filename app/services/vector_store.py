@@ -43,19 +43,25 @@ class VectorStoreService:
             return 0
 
         texts=[c.content for c in chunks]
-        ids=[c.doc_id for c in chunks]
+        ids=[c.chunk_id for c in chunks]
         metadatas=[
             {"doc_id":c.doc_id,"doc_type":c.doc_type.value,"source":c.metadata.get("source",""),"chunk_id":c.chunk_id}
             for c in chunks
         ]
 
-        await self._store.added_texts(texts,metadatas,ids)
+        if hasattr(self._store,"aadd_texts"):
+            await self._store.aadd_texts(texts=texts,metadatas=metadatas,ids=ids)
+        else:
+            self._store.add_texts(texts=texts,metadatas=metadatas,ids=ids)
 
         return len(chunks)
 
     async def search(self,query:str,top_k:int=5)->list[tuple[dict, float]]:
         """语义搜索，返回（文档，分数）列表"""
-        results=await self._store.similarity_search_with_score(query,top_k)
+        if hasattr(self._store,"asimilarity_search_with_score"):
+            results=await self._store.asimilarity_search_with_score(query,top_k)
+        else:
+            results=self._store.similarity_search_with_score(query,top_k)
         return [
             ({"content":doc.page_content,"source":doc.metadata.get("source",""),"metadata":doc.metadata},score)
             for doc,score in results

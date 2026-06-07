@@ -25,7 +25,7 @@ async def trigger_update(req: UpdateRequest):
         file_path=req.file_path,
         change_type=ChangeType(req.change_type),
     )
-    result=await update_wf.ainvoke(change)
+    result=await update_wf.ainvoke({"changes":[change]})
     results=result.get("results",[])
     if not results:
         raise HTTPException(status_code=500,detail="知识更新失败")
@@ -34,7 +34,7 @@ async def trigger_update(req: UpdateRequest):
     return UpdateResponse(
         file_path=r.change.file_path,
         vectors_added=r.vectors_added,
-        vectors_deleted=r.vectors_deleted,
+        vectors_deleted=getattr(r,"vectors_deleted",0),
         entities_added=r.entities_added,
         relations_added=r.relations_added,
         success=r.success,

@@ -192,37 +192,36 @@ class KnowledgeUpdateAgent:
     async def _handle_create(self, change:DocumentChange, result:UpdateResult)->None:
         if not self.doc_parser:
             return
-        chunks=await self.doc_parser.parse_file(change.file_path)
+        chunks=await self.doc_parser.parse(change.file_path)
 
         if self.vector_store:
-            await self.vector_store.delete_chunks(chunks)
-            result.vectors_added=len(chunks)
+            result.vectors_added=await self.vector_store.add_chunks(chunks)
 
         if self.knowledge_extractor and self.knowledge_graph:
             extractions=await self.knowledge_extractor.extract(chunks)
             for ext in extractions:
                 for ent in ext.entities:
                     version =self._bump_version(ent.name)
-                    await self.knowledge_graph.upsert_entity(ent.name, version)
+                    await self.knowledge_graph.upsert_entity(ent, version, source=change.file_path)
                     result.entities_added+=1
                 for rel in ext.relations:
                     await self.knowledge_graph.add_relation(rel)
                     result.relations_added+=1
 
     async def _handle_modify(self,change:DocumentChange, result:UpdateResult):
-        doc_id=hashlib.sha256(change.file_path.encode().hexdigest()[:16])
+        doc_id=hashlib.sha256(change.file_path.encode()).hexdigest()[:16]
 
         if self.vector_store:
             deleted=await self.vector_store.delete_by_doc_id(doc_id)
             result.vectors_deleted=deleted
 
-        await self._handle_create(change, result)
         if self.knowledge_graph:
             await self.knowledge_graph.delete_by_source(change.file_path)
+        await self._handle_create(change, result)
 
 
     async def _handle_delete(self, change:DocumentChange, result:UpdateResult):
-        doc_id=hashlib.sha256(change.file_path.encode().hexdigest()[:16])
+        doc_id=hashlib.sha256(change.file_path.encode()).hexdigest()[:16]
         if self.vector_store:
             deleted=await self.vector_store.delete_by_doc_id(doc_id)
             result.vectors_deleted=deleted
