@@ -19,16 +19,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── ChromaDB 向量数据库 ───────────────────────
-  chromadb:
-    image: chromadb/chroma:latest
-    container_name: agenthub-chromadb
+  # ── PGVector 向量数据库 ───────────────────────
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: agenthub-pgvector
     ports:
-      - "8000:8000"
-    volumes:
-      - chroma_data:/chroma/chroma
+      - "5432:5432"
     environment:
-      ANONYMIZED_TELEMETRY: "false"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: agent_knowledge
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_knowledge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ── Kafka (CDC 消息队列) ──────────────────────
   zookeeper:
@@ -45,7 +52,10 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     depends_on:
       - zookeeper
@@ -53,22 +63,30 @@ services:
   # ── Python API 服务 ───────────────────────────
   api:
     build:
-      context: ./python
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: app/Dockerfile
     container_name: agenthub-api
     ports:
       - "8080:8080"
     env_file:
-      - ./python/.env
+      - ./.env
+    environment:
+      VECTOR_STORE: pgvector
+      VECTOR_STORE_TYPE: pgvector
+      PGVECTOR_DSN: postgresql+psycopg2://postgres:password@pgvector:5432/agent_knowledge
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
       - neo4j
-      - chromadb
+      - pgvector
       - kafka
     volumes:
-      - ./python:/app
+      - .:/app
       - uploads:/app/uploads
 
 volumes:
   neo4j_data:
-  chroma_data:
+  pgvector_data:
   uploads:

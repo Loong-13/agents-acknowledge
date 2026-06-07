@@ -1,6 +1,8 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # 系统依赖（OCR / PDF 必备，不变）
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,4 +22,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
