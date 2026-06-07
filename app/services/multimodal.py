@@ -31,5 +31,44 @@ class MultiModalService:
       """
     MODALITY_WEIGHTS:dict[str,float]={
         DocType.TEXT.value:1.0,
-        DocType.MARKDOWN.value:1.0
+        DocType.MARKDOWN.value:1.0,
+        DocType.IMAGE.value:0.85,
+        DocType.TABLE.value:0.9,
+        DocType.PDF.value:0.95,
     }
+
+    def __init__(self):
+        self.embeddings = DashScopeEmbeddings(
+            model=os.getenv("DASHSCOPE_EMBEDDING_MODEL"),
+            dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
+        )
+
+    async def embed_chunks(self,chunks:list[DocumentChunk])->list[list[float]]:
+        """批量嵌入文档快"""
+        texts = [chunk.content for chunk in chunks]
+        return await self.embeddings.embed_documents(texts)
+
+    async def embed_query(self,query:str)->list[float]:
+        """嵌入查询"""
+        return await self.embeddings.embed_query(query)
+
+    def weighted_rerank(
+            self,
+            results:list[tuple[DocumentChunk,float]],
+    )->list[MultiModalServiceResult]:
+        """
+          根据模态权重对结果进行加权排序
+          """
+        reranked:list[MultiModalServiceResult]=[]
+        for chunk,score in results:
+            weight=self.MODALITY_WEIGHTS.get(chunk.doc_type.value,1.0)
+            reranked.append(
+                MultiModalServiceResult(
+                    content=chunk.content,
+                    modality=chunk.doc_type.value,
+                    score=score*weight,
+                    metadata=chunk.metadata,
+                )
+            )
+        reranked.sort(key=lambda x:x.score,reverse=True)
+        return reranked
