@@ -28,8 +28,8 @@ class KnowledgeGraphService:
     async def init(self):
         from neo4j import AsyncGraphDatabase
         self._driver=AsyncGraphDatabase.driver(
-            os.getenv("neo4j_uri"),
-            auth=(os.getenv("neo4j_user"),os.getenv("neo4j_password")),
+            os.getenv("NEO4J_URI"),
+            auth=(os.getenv("NEO4J_USER"),os.getenv("NEO4J_PASSWORD")),
         )
         await self._ensure_indexes()
 

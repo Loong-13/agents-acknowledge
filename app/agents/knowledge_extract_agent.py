@@ -20,7 +20,7 @@ from html5lib.constants import entities
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from doc_parser_agent import DocumentChunk
+from app.agents.doc_parser_agent import DocumentChunk
 
 
 extraction_system_prompt="""/

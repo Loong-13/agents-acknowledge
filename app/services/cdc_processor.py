@@ -159,10 +159,10 @@ class CDCProcessor:
         """启动Kafka消费者"""
         from confluent_kafka import Consumer
         if topics is None:
-            topics=[os.getenv("kafka_topic_doc_changes")]
+            topics=[os.getenv("KAFKA_TOPIC_DOC_CHANGES")]
 
         conf ={
-            "bootstrap.servers":os.getenv("kafka_bootstrap_servers"),
+            "bootstrap.servers":os.getenv("KAFKA_BOOTSTRAP_SERVERS"),
             "group.id":"cdc-processor",
             "auto.offset.reset":"latest",
             "enable.auto.commit":True,

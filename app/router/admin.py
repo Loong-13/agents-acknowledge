@@ -1,23 +1,23 @@
 from fastapi import APIRouter,HTTPException
 
 from app.agents.knowledge_update_agent import DocumentChange, ChangeType
-from app.main import workflows, vector_store, knowledge_graph
+from app import runtime
 from app.schemas.api import StatsResponse, UpdateResponse, UpdateRequest
 
 
-router = APIRouter(prefix="api/admin",tags=["系统管理"])
+router = APIRouter(prefix="/api/admin",tags=["系统管理"])
 
 @router.get("/stats",response_model=StatsResponse)
 async def get_stats():
     """系统统计"""
-    vs_stats=await vector_store.get_stats()
-    kg_stats=await knowledge_graph.get_stats()
+    vs_stats=await runtime.vector_store.get_stats()
+    kg_stats=await runtime.knowledge_graph.get_stats()
     return StatsResponse(vector_store=vs_stats,knowledge_graph=kg_stats)
 
 @router.post("/update",response_model=UpdateResponse)
 async def trigger_update(req: UpdateRequest):
     """手动触发知识更新"""
-    update_wf=workflows.get("update")
+    update_wf=runtime.workflows.get("update")
     if not update_wf:
         raise HTTPException(status_code=500,detail="知识更新工作流不存在")
 

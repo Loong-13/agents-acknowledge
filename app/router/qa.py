@@ -2,15 +2,15 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from app.main import workflows
+from app import runtime
 from app.schemas.api import QuestionResponse
 
-router=APIRouter(prefix="api/qa",tags=["智能回答"])
+router=APIRouter(prefix="/api/qa",tags=["智能回答"])
 
 @router.post("/ask",response_model=QuestionResponse)
 async def ask_question(req: QuestionResponse):
     """智能问答 — 混合检索 + 知识图谱推理"""
-    qa_wf=workflows.get("qa")
+    qa_wf=runtime.workflows.get("qa")
     if not qa_wf:
         raise HTTPException(status_code=503,detail="QA workflow not initialized")
 
