@@ -80,7 +80,7 @@ class ExtractionResult:
     events: list[KnowledgeEvet]
     source_chunk_id: str=""
 
-class KnowledgeExtractorAgent:
+class KnowledgeExtractAgent:
     """
        知识抽取 Agent
 

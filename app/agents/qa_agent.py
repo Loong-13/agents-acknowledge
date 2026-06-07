@@ -40,7 +40,7 @@ class RetrievedContext:
     metadata:dict[str,Any]=field(default_factory=dict)
 
 @dataclass
-class QueryResult:
+class QAResult:
     question:str
     answer:str
     contexts:list[RetrievedContext]
