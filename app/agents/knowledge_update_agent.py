@@ -28,7 +28,6 @@ class DocumentChange:
     new_hash: str=""
     diff_chunks:list[str]=field(default_factory=list)
 
-@dataclass
 class ChangeType(Enum):
     """文档变更类型"""
     CREATED = "created"
