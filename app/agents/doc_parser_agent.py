@@ -106,7 +106,7 @@ class DocParserAgent:
         """生成文档ID"""
         return hashlib.sha256(file_path.encode()).hexdigest()[:16]
 
-    async def _parse_pdf(self, file_path: str) -> list[ str]:
+    async def _parse_pdf(self, file_path: str) -> list[str]:
         """解析PDF文件，返回文本列表"""
         texts:list[ str]=[]
         try:
@@ -119,30 +119,30 @@ class DocParserAgent:
                     texts.append(page_text.strip())
 
         except Exception as e:
-            return f"Error parsing PDF: {e}"
+            return [f"Error parsing PDF: {e}"]
 
         if not texts:
             texts=await self._pdf_vision_fallback(file_path)
         return texts
 
-    async def _pdf_vision_fallback(self, file_path: str):
+    async def _pdf_vision_fallback(self, file_path: str) -> list[str]:
         """当pdf纯文本提取失败时，使用LLM视觉能力"""
         try:
             from pdf2image import convert_from_path
             images=convert_from_path(file_path, dpi=150,first_page=1, last_page=5)
-            texts:list[ str]=[]
+            texts:list[str]=[]
             for img in images:
                 description=await self._describe_image_with_llm(img)
                 texts.append(description)
-                return texts
+            return texts
         except Exception as e:
-            return f"Error converting PDF to images: {e}"
+            return [f"Error converting PDF to images: {e}"]
 
-    async def _parse_image(self, file_path: str):
+    async def _parse_image(self, file_path: str) -> list[str]:
         """解析图片文件，返回文本列表"""
         texts:list[ str]=[]
         ocr_text=self._ocr(file_path)
-        if ocr_text.strip():
+        if ocr_text and ocr_text.strip():
             texts.append(ocr_text)
 
         from PIL import Image
@@ -152,7 +152,7 @@ class DocParserAgent:
         return texts
 
     @staticmethod
-    def _ocr(file_path: str):
+    def _ocr(file_path: str) -> str:
         """使用OCR进行图片识别"""
         try:
             import pytesseract
@@ -161,8 +161,9 @@ class DocParserAgent:
 
         except Exception as e:
             print(f"Error performing OCR: {e}")
+            return ""
 
-    async def _describe_image_with_llm(self, image: Any):
+    async def _describe_image_with_llm(self, image: Any) -> str:
         """使用LLM进行图片描述"""
         import base64
         import  io
@@ -177,10 +178,10 @@ class DocParserAgent:
                 {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
             ]),
         ]
-        resp=await self.llm.invoke( messages)
+        resp=await self.llm.ainvoke(messages)
         return resp.content
 
-    async  def _parse_table(self, file_path: str):
+    async  def _parse_table(self, file_path: str) -> list[str]:
         """解析表格文件，返回文本列表"""
         ext=os.path.splitext(file_path)[1].lower()
         try:
@@ -190,10 +191,10 @@ class DocParserAgent:
                 return self._parse_excel(file_path)
 
         except Exception as e:
-            return(f"Error parsing table: {e}")
+            return [f"Error parsing table: {e}"]
 
     @staticmethod
-    def _parse_csv(file_path: str):
+    def _parse_csv(file_path: str) -> list[str]:
         """解析csv"""
         import csv
         texts:list[ str]=[]
@@ -205,19 +206,19 @@ class DocParserAgent:
                 rows.append("|".join(f"{h}:{row.get(h, "")}"for h in headers))
             for i in range(0,len(rows),20):
                 batch=rows[i:i+20]
-                texts.append(f"表头：{"|".join(headers)}\n"+"\n".join(batch))
+                texts.append(f"Headers: {'|'.join(headers)}\n"+"\n".join(batch))
 
         return texts or ["[空CSV]"]
 
     @staticmethod
-    def _parse_excel(file_path:str)-> None | list[str] | str:
+    def _parse_excel(file_path:str) -> list[str]:
         """解析Excel"""
         try:
             import openpyxl
             workbook=openpyxl.load_workbook(file_path,read_only= True)
             texts:list[ str]=[]
             for sheet in workbook.worksheets:
-                rows=list(sheet.iter_rows(valures_only= True))
+                rows=list(sheet.iter_rows(values_only=True))
                 if  not rows:
                     continue
                 headers=[str(c) if c else "" for c in rows[0]]
@@ -231,13 +232,13 @@ class DocParserAgent:
 
                 for i in range(0,len(data_rows),20):
                     batch=data_rows[i:i+20]
-                    texts.append(f"工作表：{sheet.title}\n表头:{"|".join(headers)} \n"+ "\n".join(batch))
-                    return texts or ["[空Excel]"]
+                    texts.append(f"Sheet: {sheet.title}\nHeaders: {'|'.join(headers)}\n"+ "\n".join(batch))
+            return texts or ["[empty Excel]"]
         except Exception as e:
-            return(f"Error parsing Excel: {e}")
+            return [f"Error parsing Excel: {e}"]
 
     @staticmethod
-    def _parse_text(file_path: str)->list[str]:
+    async def _parse_text(file_path: str)->list[str]:
         """解析文本文件，返回文本列表"""
         with open(file_path, encoding="utf-8") as f:
             return [f.read()]

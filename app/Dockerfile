@@ -3,6 +3,8 @@ FROM python:3.14-slim
 WORKDIR /app
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # 系统依赖（OCR / PDF 必备，不变）
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml uv.lock ./
 
 # 安装依赖（直接用 uv，不再下载 uv）
-RUN uv sync --frozen --system --no-cache
+RUN uv sync --frozen --no-cache
 
 # 复制代码
 COPY . .

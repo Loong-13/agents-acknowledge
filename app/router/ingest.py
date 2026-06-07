@@ -10,7 +10,15 @@ router = APIRouter(prefix="/api/ingest",tags=["文档入库"])
 @router.post("/upload",response_model=IngestResponse)
 async def upload_document(file:UploadFile=File(...)):
     """上传并解析文档，自动入库到向量库和知识图谱"""
-    save_path=os.path.join(os.getenv("UPLOAD_DIR") or "uploads",file.filename or "unknown")
+    if not runtime.vector_store_ready:
+        raise HTTPException(status_code=503, detail="向量数据库未初始化，请检查 PGVECTOR_DSN 和 pgvector 服务")
+    if not runtime.knowledge_graph_ready:
+        raise HTTPException(status_code=503, detail="知识图谱未初始化，请检查 NEO4J_URI/NEO4J_USER/NEO4J_PASSWORD 和 neo4j 服务")
+
+    upload_dir = os.getenv("UPLOAD_DIR") or "uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    safe_name = os.path.basename(file.filename or "unknown")
+    save_path=os.path.join(upload_dir,safe_name)
     with open(save_path,"wb") as f:
         shutil.copyfileobj(file.file,f)
 

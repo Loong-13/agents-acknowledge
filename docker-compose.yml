@@ -73,6 +73,8 @@ services:
     environment:
       PGVECTOR_DSN: postgresql+psycopg2://postgres:password@pgvector:5432/agent_knowledge
       NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
     depends_on:
       - neo4j

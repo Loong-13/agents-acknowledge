@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,6 +16,7 @@ from app.services.knowledge_graph import KnowledgeGraphService
 from app.services.vector_store import VectorStoreService
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -24,12 +26,16 @@ async def lifespan(app: FastAPI):
     os.makedirs(os.getenv("UPLOAD_DIR") or "uploads", exist_ok=True)
     try:
         await runtime.vector_store.init()
+        runtime.vector_store_ready = True
     except Exception:
-        pass
+        logger.exception("Vector store initialization failed")
+        runtime.vector_store_ready = False
     try:
         await runtime.knowledge_graph.init()
+        runtime.knowledge_graph_ready = True
     except Exception:
-        pass
+        logger.exception("Knowledge graph initialization failed")
+        runtime.knowledge_graph_ready = False
     runtime.workflows.update(
         build_knowledge_graph_workflow(
             vector_store=runtime.vector_store,
