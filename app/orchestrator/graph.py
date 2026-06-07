@@ -88,18 +88,18 @@ def _build_ingest_graph(
     async def parse_documents(state: dict)-> dict:
         file_paths=state.get("file_paths",[])
         chunks=await doc_parser.parse_batch(file_paths)
-        return {"chunks":chunks}
+        return {**state, "chunks":chunks}
 
     async def extract_knowledge(state: dict)-> dict:
         chunks=state.get("chunks",[])
         extractions=await extractor.extract(chunks)
-        return {"extractions":extractions}
+        return {**state, "extractions":extractions}
     async def store_vectors(state: dict)-> dict:
         chunks=state.get("chunks",[])
         count=0
         if vector_store and  chunks:
             count+=await vector_store.add_chunks(chunks)
-        return {"vector_stored":count}
+        return {**state, "vector_stored":count}
     async def store_graph(state: dict)-> dict:
         extractions=state.get("extractions",[])
         entity_count=0
@@ -110,7 +110,7 @@ def _build_ingest_graph(
                     entity_count+=1
                 for rel in ext.relations:
                     await knowledge_graph.add_relation(rel)
-        return {"entities_stored":entity_count}
+        return {**state, "entities_stored":entity_count}
     graph=StateGraph(dict)
     graph.add_node("parse",parse_documents)
     graph.add_node("extract",extract_knowledge)
@@ -122,7 +122,6 @@ def _build_ingest_graph(
     graph.add_edge("extract","store_vectors")
     graph.add_edge("store_vectors","store_graph")
     graph.add_edge("store_graph",END)
-    graph.add_edge("store_vectors",END)
 
     return graph.compile()
 
