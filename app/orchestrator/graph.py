@@ -133,8 +133,8 @@ def _build_qa_graph(qa_agent: QAAgent) :
         return {"answer":result}
     graph=StateGraph(dict)
     graph.add_node("process",process_question)
-    graph.set_entry_point("answer")
-    graph.add_edge("answer",END)
+    graph.set_entry_point("process")
+    graph.add_edge("process",END)
 
     return graph.compile()
 
@@ -161,7 +161,7 @@ def _build_update_graph(update_agent: KnowledgeUpdateAgent) :
     graph.add_node("process",process_update)
     graph.add_node("retry",retry_failed)
     graph.set_entry_point("process")
-    graph.add_conditional_edge("process",should_connection,{"retry":"retry","done":END})
+    graph.add_conditional_edges("process",should_connection,{"retry":"retry","done":END})
     graph.add_edge("retry",END)
 
     return graph.compile()
