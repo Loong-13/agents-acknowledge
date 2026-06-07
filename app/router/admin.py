@@ -14,6 +14,12 @@ async def get_stats():
     kg_stats=await runtime.knowledge_graph.get_stats()
     return StatsResponse(vector_store=vs_stats,knowledge_graph=kg_stats)
 
+@router.get("/graph")
+async def get_graph(limit: int = 80):
+    if not runtime.knowledge_graph_ready:
+        raise HTTPException(status_code=503, detail="Knowledge graph is not initialized")
+    return await runtime.knowledge_graph.get_topology(limit=limit)
+
 @router.post("/update",response_model=UpdateResponse)
 async def trigger_update(req: UpdateRequest):
     """手动触发知识更新"""

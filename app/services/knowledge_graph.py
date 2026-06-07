@@ -154,3 +154,62 @@ class KnowledgeGraphService:
             "total_entities":entity_count[0]["cnt"] if entity_count else 0,
             "total_relations":rel_count[0]["cnt"] if rel_count else 0,
         }
+
+    async def get_topology(self, limit:int=80)->dict:
+        """Return a compact graph view for the dashboard."""
+        relation_query = """
+        MATCH (a:Entity)-[r]->(b:Entity)
+        RETURN
+            a.name AS source,
+            a.type AS source_type,
+            a.description AS source_description,
+            b.name AS target,
+            b.type AS target_type,
+            b.description AS target_description,
+            type(r) AS type,
+            r.confidence AS confidence
+        LIMIT $limit
+        """
+        nodes_query = """
+        MATCH (e:Entity)
+        RETURN e.name AS id, e.name AS label, e.type AS type, e.description AS description
+        ORDER BY e.updated_at DESC
+        LIMIT $limit
+        """
+        relation_rows = await self.execute_cypher(relation_query, {"limit": limit * 2})
+        nodes_by_id:dict[str,dict]= {}
+        edges = []
+        for row in relation_rows:
+            source = row.get("source")
+            target = row.get("target")
+            if not source or not target:
+                continue
+            nodes_by_id[source] = {
+                "id": source,
+                "label": source,
+                "type": row.get("source_type"),
+                "description": row.get("source_description"),
+            }
+            nodes_by_id[target] = {
+                "id": target,
+                "label": target,
+                "type": row.get("target_type"),
+                "description": row.get("target_description"),
+            }
+            edges.append({
+                "source": source,
+                "target": target,
+                "type": row.get("type"),
+                "confidence": row.get("confidence"),
+            })
+            if len(nodes_by_id) >= limit:
+                break
+
+        if len(nodes_by_id) < limit:
+            for node in await self.execute_cypher(nodes_query, {"limit": limit - len(nodes_by_id)}):
+                nodes_by_id.setdefault(node["id"], node)
+
+        nodes = list(nodes_by_id.values())[:limit]
+        node_ids = {node["id"] for node in nodes}
+        edges = [edge for edge in edges if edge["source"] in node_ids and edge["target"] in node_ids]
+        return {"nodes": nodes, "edges": edges}
